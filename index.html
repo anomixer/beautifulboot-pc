@@ -1,0 +1,213 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>Beautiful Boot for PC Demo</title>
+<script src="https://cdn.jsdelivr.net/npm/v86/build/libv86.js"></script>
+
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: #1a1a2e; font-family: sans-serif; display: flex; flex-direction: column; align-items: center; min-height: 100vh; }
+
+  header {
+    width: 100%; padding: 12px 24px;
+    background: #16213e;
+    display: flex; align-items: center; justify-content: space-between;
+    border-bottom: 2px solid #0f3460;
+  }
+  header h1 { color: #e0e0e0; font-size: 20px; letter-spacing: 1px; }
+
+  #toolbar {
+    width: 100%; padding: 8px 16px;
+    background: #0f3460;
+    display: none;
+    flex-wrap: wrap; gap: 8px; align-items: center;
+    border-bottom: 1px solid #1a4a8a;
+  }
+  #toolbar button {
+    padding: 5px 12px; font-size: 13px;
+    background: #16213e; color: #e0e0e0;
+    border: 1px solid #7ecae3; border-radius: 4px;
+    cursor: pointer; transition: background .15s;
+  }
+  #toolbar button:hover { background: #1a4a8a; }
+  #toolbar #btn_pause { min-width: 88px; }
+
+  #screen_wrap { flex: 1; display: flex; align-items: center; justify-content: center; padding: 20px; }
+  #screen_container { background: #000; display: inline-block; }
+  #screen_container canvas { display: block; }
+  #screen_container > div { color: #fff; }
+
+  #screen_container:fullscreen,
+  #screen_container:-webkit-full-screen {
+    background: #000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 100vw;
+    height: 100vh;
+  }
+  #screen_container:fullscreen canvas,
+  #screen_container:-webkit-full-screen canvas {
+    width: 100% !important;
+    height: 100% !important;
+    object-fit: contain;
+  }
+
+  #overlay {
+    position: fixed; inset: 0;
+    display: flex; flex-direction: column;
+    align-items: center; justify-content: center;
+    background: rgba(0,0,0,.78); z-index: 9999; color: #fff;
+  }
+  #overlay p { margin-bottom: 20px; font-size: 18px; opacity: .8; }
+  #start_btn {
+    font-size: 18px; padding: 14px 32px;
+    background: #e94560; color: #fff;
+    border: none; border-radius: 8px;
+    cursor: pointer; transition: background .2s;
+  }
+  #start_btn:hover { background: #c73652; }
+
+  footer {
+    width: 100%; padding: 10px 24px;
+    background: #16213e;
+    display: flex; align-items: center; justify-content: space-between;
+    border-top: 2px solid #0f3460;
+    color: #aaa; font-size: 14px;
+  }
+  footer a { color: #7ecae3; text-decoration: none; }
+  footer a:hover { text-decoration: underline; }
+</style>
+
+<header>
+  <h1>Beautiful Boot for PC Demo</h1>
+  <a href="https://github.com/anomixer/beautifulboot-pc" target="_blank" aria-label="GitHub">
+    <svg width="28" height="28" viewBox="0 0 24 24" fill="#e0e0e0">
+      <path d="M12 0C5.37 0 0 5.37 0 12c0 5.3 3.438 9.8 8.205 11.387.6.113.82-.258.82-.577
+               0-.285-.01-1.04-.015-2.04-3.338.724-4.042-1.61-4.042-1.61-.546-1.387-1.333-1.757-1.333-1.757
+               -1.09-.745.083-.729.083-.729 1.205.084 1.84 1.237 1.84 1.237 1.07 1.834 2.807 1.304
+               3.492.997.108-.775.418-1.305.762-1.605-2.665-.3-5.467-1.332-5.467-5.93
+               0-1.31.468-2.38 1.235-3.22-.124-.303-.535-1.523.117-3.176 0 0 1.008-.322
+               3.3 1.23a11.52 11.52 0 0 1 3-.404c1.02.005 2.045.138 3 .404 2.29-1.552
+               3.297-1.23 3.297-1.23.653 1.653.242 2.873.12 3.176.77.84 1.232 1.91
+               1.232 3.22 0 4.61-2.807 5.625-5.48 5.92.43.37.814 1.102.814 2.222
+               0 1.606-.015 2.898-.015 3.293 0 .32.216.694.825.576C20.565 21.796 24 17.298
+               24 12c0-6.63-5.37-12-12-12z"/>
+    </svg>
+  </a>
+</header>
+
+<div id="toolbar">
+  <button id="btn_pause">&#9208; Pause</button>
+  <button id="btn_reset">&#8635; Reset</button>
+  <button id="btn_cad">Ctrl-Alt-Del</button>
+  <button id="btn_fullscreen">&#x26F6; Fullscreen</button>
+  <button id="btn_screenshot">&#128247; Screenshot</button>
+  <button id="btn_mute">&#128263; Mute</button>
+</div>
+
+<div id="overlay">
+  <p>Beautiful Boot for PC Demo</p>
+  <button id="start_btn">&#9654; Click to Start &amp; Enable Audio</button>
+</div>
+
+<div id="screen_wrap">
+  <div id="screen_container">
+    <div style="white-space: pre; font: 14px monospace; line-height: 14px"></div>
+    <canvas></canvas>
+  </div>
+</div>
+
+<footer>
+  <span>Powered by <a href="https://copy.sh/v86/" target="_blank">v86 PC browser emulator</a></span>
+  <a href="https://github.com/copy/v86" target="_blank" aria-label="GitHub">
+    <svg width="24" height="24" viewBox="0 0 24 24" fill="#aaa">
+      <path d="M12 0C5.37 0 0 5.37 0 12c0 5.3 3.438 9.8 8.205 11.387.6.113.82-.258.82-.577
+               0-.285-.01-1.04-.015-2.04-3.338.724-4.042-1.61-4.042-1.61-.546-1.387-1.333-1.757-1.333-1.757
+               -1.09-.745.083-.729.083-.729 1.205.084 1.84 1.237 1.84 1.237 1.07 1.834 2.807 1.304
+               3.492.997.108-.775.418-1.305.762-1.605-2.665-.3-5.467-1.332-5.467-5.93
+               0-1.31.468-2.38 1.235-3.22-.124-.303-.535-1.523.117-3.176 0 0 1.008-.322
+               3.3 1.23a11.52 11.52 0 0 1 3-.404c1.02.005 2.045.138 3 .404 2.29-1.552
+               3.297-1.23 3.297-1.23.653 1.653.242 2.873.12 3.176.77.84 1.232 1.91
+               1.232 3.22 0 4.61-2.807 5.625-5.48 5.92.43.37.814 1.102.814 2.222
+               0 1.606-.015 2.898-.015 3.293 0 .32.216.694.825.576C20.565 21.796 24 17.298
+               24 12c0-6.63-5.37-12-12-12z"/>
+    </svg>
+  </a>
+</footer>
+
+<script>
+let emulator;
+let paused = false;
+let muted = false;
+
+document.getElementById("start_btn").addEventListener("click", function () {
+  document.getElementById("overlay").style.display = "none";
+  document.getElementById("toolbar").style.display = "flex";
+
+  window._v86AudioContexts = [];
+  const OrigAC = window.AudioContext || window.webkitAudioContext;
+  const PatchedAC = function(...args) {
+    const ctx = new OrigAC(...args);
+    window._v86AudioContexts.push(ctx);
+    return ctx;
+  };
+  Object.setPrototypeOf(PatchedAC, OrigAC);
+  PatchedAC.prototype = OrigAC.prototype;
+  window.AudioContext = window.webkitAudioContext = PatchedAC;
+
+  emulator = new V86({
+    wasm_path: "https://cdn.jsdelivr.net/npm/v86/build/v86.wasm",
+    memory_size: 32 * 1024 * 1024,
+    vga_memory_size: 8 * 1024 * 1024,
+    screen_container: document.getElementById("screen_container"),
+    bios: { url: "https://cdn.jsdelivr.net/gh/copy/v86@master/bios/seabios.bin" },
+    vga_bios: { url: "https://cdn.jsdelivr.net/gh/copy/v86@master/bios/vgabios.bin" },
+    fda: { url: "beautiful.img" },
+    boot_order: 0x321,
+    autostart: true,
+  });
+
+  document.getElementById("btn_pause").addEventListener("click", function () {
+    if (paused) {
+      emulator.run();
+      paused = false;
+      this.innerHTML = "&#9208; Pause";
+    } else {
+      emulator.stop();
+      paused = true;
+      this.innerHTML = "&#9654; Resume";
+    }
+  });
+
+  document.getElementById("btn_reset").addEventListener("click", function () {
+    emulator.restart();
+  });
+
+  document.getElementById("btn_cad").addEventListener("click", function () {
+    emulator.keyboard_send_scancodes([0x1D, 0x38, 0x53, 0xD3, 0xB8, 0x9D]);
+  });
+
+  document.getElementById("btn_fullscreen").addEventListener("click", function () {
+    const el = document.getElementById("screen_container");
+    if (el.requestFullscreen) el.requestFullscreen();
+    else if (el.webkitRequestFullscreen) el.webkitRequestFullscreen();
+  });
+
+  document.getElementById("btn_screenshot").addEventListener("click", function () {
+    const img = emulator.screen_make_screenshot();
+    const a = document.createElement("a");
+    a.href = img.src;
+    a.download = "screenshot.png";
+    a.click();
+  });
+
+  document.getElementById("btn_mute").addEventListener("click", function () {
+    muted = !muted;
+    this.innerHTML = muted ? "&#128266; Unmute" : "&#128263; Mute";
+    (window._v86AudioContexts || []).forEach(ctx => {
+      muted ? ctx.suspend() : ctx.resume();
+    });
+  });
+
+}, { once: true });
+</script>

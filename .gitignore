@@ -1,0 +1,9 @@
+*.bin
+*.log
+*.lst
+*.wav
+*.mp4
+bochsrc-wsl.txt
+bochsout.txt
+.DS_Store
+
