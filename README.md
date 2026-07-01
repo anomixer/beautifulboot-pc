@@ -26,7 +26,8 @@ Upon program exit, the menu restores the graphics environment for the detected a
   - **EGA (Mode 0Dh)**: Maps colors to standard high-intensity 16-color palette elements (e.g. Yellow and Brown for Amber).
   - **CGA (Mode 04h)**: Dynamically toggles hardware Palette 0 (Green/Red/Brown) for Green/Amber modes and Palette 1 (Cyan/Magenta/White) for Color mode via BIOS interrupt `INT 10h / AH=0Bh` to avoid monochrome text rendering in incorrect colors.
   - **MDA / Hercules**: Automatically falls back to standard 80x25 text mode (Mode 03h) since standard PC BIOS does not natively support graphics modes or pixel-drawing routines on monochrome adapters, ensuring maximum hardware compatibility and safety.
-- **Multi-Adapter Graphics, Starfield & Audio**: Renders a vertical falling starfield at ≈60 FPS (synchronized with the video card's vertical blanking interval to prevent tearing) using custom 8x8 font rendering. We offset the starfield trajectories to the character cell spacing columns so stars fall cleanly between text columns without clipping any glyph pixels. Each star movement fires a crisp 2.5 ms PC speaker click at a randomly varied pitch (~340–1136 Hz), producing a dense Geiger-counter-like crackling at ≈25–35 clicks/sec — faithfully recreating the Apple II's signature starfield audio signature.
+- **Multi-Adapter Graphics, Starfield & Audio**: Renders a vertical falling starfield at ≈60 FPS (synchronized with the video card's vertical blanking interval to prevent tearing) using custom 8x8 font rendering. We offset the starfield trajectories to the character cell spacing columns so stars fall cleanly between text columns without clipping any glyph pixels. Each star movement fires a crisp 2.5 ms PC speaker click at a randomly varied pitch (~340–1136 Hz), producing a dense Geiger-counter-like crackling — faithfully recreating the Apple II's signature starfield audio signature.
+- **Star Speed Customization & OSD**: Pressing `+`/`=` or `-`/`_` adjusts the background starfield speed dynamically from level 01 to 12. Adjusting the speed displays an OSD indicator (`Star Speed: 01` ~ `Star Speed: 12`) matching the theme color on the bottom separator line, which automatically fades out after 1 second of inactivity. Speeding up the stars naturally increases the click frequency for a higher-energy retro sound.
 - **Curtain Closing Transition & Sound**: When loading a program, the screen closes like a curtain from the top and bottom simultaneously. During this animation, the PC speaker plays a sweeping laser frequency pitch synchronized with the collapsing rows. Upon completion, the system switches to 80x25 text mode, displays a centered `"Prepare Yourself..."` screen message on row 12, and pauses for 1 second before executing the binary.
 - **Robust MZ (.EXE) Relocator**: Parses the DOS MZ header, copies the program code block, zeros the PSP, relocates segment pointers based on the actual header geometry, and sets up registers and stack space.
 - **COM & BIN Program Support**: Standardizes COM environments by setting up the PSP at `0x1000:0000`, copying code to `0x1000:0100`, zeroing registers, and setting the stack pointer to `0xFFFE`.
@@ -36,6 +37,8 @@ Upon program exit, the menu restores the graphics environment for the detected a
   - `TAB`: Cycle video color mode (Green -> Amber -> Color -> Green).
   - `SPACE`: Swap boot drives (e.g. floppy `A:` vs `B:`).
   - `ENTER`: Toggle to the next page of the file directory.
+  - `+` or `=`: Increase the falling star speed (levels 01 to 12).
+  - `-` or `_`: Decrease the falling star speed (levels 01 to 12).
   - `ESC`: Exit and drop to ROM BASIC via BIOS `INT 18h`.
 
 ---
@@ -53,11 +56,10 @@ DOS programs, providing **576 KB** of contiguous conventional memory.
 | `0x00000`–`0x003FF` | `0000:0000` | 1 KB | Interrupt Vector Table (IVT) |
 | `0x00400`–`0x004FF` | `0000:0400` | 256 B | BIOS Data Area (BDA) |
 | `0x00500`–`0x006FF` | `0000:0500` | 512 B | Free / BIOS scratch |
-| `0x00700`–`0x023FF` | `0070:0000` | ~7.2 KB | **Stage 2 code + resident handlers** (INT 21h + bounce buffer) |
-| `0x02400`–`0x024FF` | — | 256 B | Free / Alignment space |
-| `0x02500`–`0x03CFF` | `0250:0000` | 7 KB | Root Directory buffer (14 sectors × 512 B) |
-| `0x04100`–`0x052FF` | `0410:0000` | 4.5 KB | FAT buffer (9 sectors × 512 B) |
-| `0x05300`–`0x07BFF` | — | ~10.2 KB | Free space |
+| `0x00700`–`0x022FF` | `0070:0000` | 7 KB | Root Directory buffer (14 sectors × 512 B) |
+| `0x02300`–`0x034FF` | `0230:0000` | 4.5 KB | FAT buffer (9 sectors × 512 B) |
+| `0x03500`–`0x0527F` | `0350:0000` | ~7.4 KB | **Stage 2 code + resident handlers** (INT 21h + bounce buffer) |
+| `0x05280`–`0x07BFF` | — | ~10.3 KB | Contiguous Free Space |
 | `0x07C00`–`0x07DFF` | `0000:7C00` | 512 B | Stage 1 boot sector (BIOS-mandated, one-shot) |
 | `0x07E00`–`0x07FFF` | `0070:7700` | 512 B | **Bootloader stack** (grows downward from `0x07900` / `0x08000` linear) |
 | `0x08000`–`0x0FFFF` | — | 32 KB | Free memory below program space |
@@ -199,7 +201,22 @@ beautifulboot-pc/
 
 ---
 
-## Sponsor
+## Tribute & In Memoriam
+
+This PC port of Beautiful Boot is created as a humble tribute to the original Apple II program and its author, **Matthew Dornquast** (Mini Appler of the Midwest Pirates Guild / MPG), who passed away in 2022. 
+
+Beautiful Boot was a masterpiece of disk utility software that served as a fast boot launcher utility to load programs speedily and save time in the 1980s. This project aims to preserve that spirit and share the magic of its falling starfield and clicky crackle sound with retro-computing enthusiasts on the PC platform.
+
+For those wishing to learn more or leave their thoughts, memorial posts and media can be found here:
+👉 [Matthew Dornquast Memorial Post (Apple II Enthusiasts Group)](https://www.facebook.com/groups/5251478676/posts/10161692059893677/)
+👉 [Jason Scott's Memorial Tweet (X)](https://x.com/textfiles/status/1490157005805395971)
+👉 [Beautiful Boot Audio Introduction / Podcast (YouTube)](https://www.youtube.com/watch?v=GXJGaiVU9H0)
+
+Rest in peace, Matthew. Your code and legacy live on.
+
+---
+
+## Disclaimer
 
 Although this program is space-themed, SpaceX did not sponsor this project! ;D
 

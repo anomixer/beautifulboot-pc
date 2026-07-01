@@ -32,7 +32,7 @@ VolumeLabel     db "BEAUTIFUL   "
 FileSystem      db "FAT12   "
 
 ; ---- Memory segments ----
-STAGE2_SEG      equ 0x0070
+STAGE2_SEG      equ 0x0350
 FAT_SEG         equ 0x07E0
 
 real_start:

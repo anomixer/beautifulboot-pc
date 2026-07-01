@@ -15,10 +15,10 @@ ORG 0x0000
 PSP_SEG        equ 0x1000   ; linear 0x10000 (start of program space)
 LOAD_SEG       equ 0x1010   ; = PSP_SEG + 0x10 (16 paragraphs = 256-byte PSP)
 ; Disk buffers inside the 32 KB bb block, below program start:
-; ROOT_DIR: 14 sectors x 512 = 7168 bytes (0x1C00) -> linear 0x2000-0x3BFF
-ROOT_DIR_SEG   equ 0x0250
-; FAT:      9 sectors x 512 = 4608 bytes (0x1200) -> linear 0x4100-0x52FF
-FAT_SEG        equ 0x0410
+; ROOT_DIR: 14 sectors x 512 = 7168 bytes (0x1C00) -> linear 0x00700-0x022FF
+ROOT_DIR_SEG   equ 0x0070
+; FAT:      9 sectors x 512 = 4608 bytes (0x1200) -> linear 0x02300-0x034FF
+FAT_SEG        equ 0x0230
 
     jmp  near entry
 
@@ -112,12 +112,23 @@ main_loop:
     call draw_menu          ; clear VGA + draw text
 
 key_loop:
+    call wait_vsync         ; ≈60 Hz frame gate for starfield & OSD
+    
     mov  al, [is_graphics_mode]
     test al, al
     jz   .skip_stars
-    call wait_vsync         ; ≈60 Hz frame gate
     call tick_stars         ; animate one frame
 .skip_stars:
+
+    ; --- OSD Timer Tick ---
+    mov  al, [osd_timer]
+    test al, al
+    jz   .skip_osd
+    dec  al
+    mov  [osd_timer], al
+    jnz  .skip_osd
+    call restore_separator_dashes
+.skip_osd:
 
     mov  ah, 0x01
     int  16h
@@ -133,6 +144,14 @@ key_loop:
     je   do_next_page
     cmp  al, ' '
     je   do_swap
+    cmp  al, '+'
+    je   do_speed_up
+    cmp  al, '='
+    je   do_speed_up
+    cmp  al, '-'
+    je   do_speed_down
+    cmp  al, '_'
+    je   do_speed_down
     or   al, 0x20
     cmp  al, 'a'
     jb   key_loop
@@ -189,6 +208,28 @@ do_next_page:
 do_color_toggle:
     call toggle_color_mode
     jmp  main_loop
+
+do_speed_up:
+    mov  al, [star_speed_step]
+    cmp  al, 24
+    jae  .done
+    add  al, 2
+    mov  [star_speed_step], al
+    call draw_osd_speed
+    mov  byte [osd_timer], 60
+.done:
+    jmp  key_loop
+
+do_speed_down:
+    mov  al, [star_speed_step]
+    cmp  al, 2
+    jbe  .done
+    sub  al, 2
+    mov  [star_speed_step], al
+    call draw_osd_speed
+    mov  byte [osd_timer], 60
+.done:
+    jmp  key_loop
 
 do_exit:
     mov  ax, 0x0003
@@ -265,7 +306,7 @@ init_stars:
     mov  [star_y + bx], ax
     pop  bx
 
-    ; Speed 4..19 (slower)
+    ; Speed 4..19
     call rng8
     and  al, 0x0F           ; 0..15
     add  al, 4              ; 4..19
@@ -340,9 +381,10 @@ tick_stars:
     mov  al, 0
     call write_pixel
 
-    ; ---- decrement per-star timer ----
-    dec  byte [star_tmr + si]
-    jnz  .draw              ; not yet time to move
+    ; ---- decrement per-star timer by star_speed_step ----
+    mov  al, [star_speed_step]
+    sub  [star_tmr + si], al
+    jg   .draw              ; if star_tmr > 0, not yet time to move
 
     ; timer hit zero → move down one pixel
     mov  al, [star_spd + si]
@@ -350,7 +392,7 @@ tick_stars:
     
     dec  byte [click_timer]
     jnz  .skip_click
-    mov  byte [click_timer], 6   ; click once every 6 star movements
+    mov  byte [click_timer], 12   ; click once every 12 star movements
     call play_click
 .skip_click:
 
@@ -1032,12 +1074,13 @@ draw_menu:
 .draw_sep_normal:
     mov  si, sep_msg
     call puts_bios
+    mov  byte [osd_timer], 0       ; Reset OSD timer on full redraw
     mov  bl, [is_graphics_mode]
     test bl, bl
     jz   .draw_sep_done
     cmp  al, 2
     jne  .draw_sep_done
-    mov  byte [text_color], 15 ; restore white
+    mov  byte [text_color], 15     ; restore white
 .draw_sep_done:
     pop  ax
 
@@ -1683,6 +1726,8 @@ free_msg_1     db "K Free space    Drive [", 0
 use_keys_msg   db "Use keys A through ", 0
 ware_msg       db " to select your ware", 0
 sep_msg        db "----------------------------------------", 0
+osd_label_msg  db "Star Speed: ", 0
+sep_dashes_14  db "--------------", 0
 disk_err_msg   db "No Disk Inserted / Disk Error", 0
 prepare_msg    db "Prepare Yourself...", 0
 %ifndef COMMENT1
@@ -2254,6 +2299,126 @@ video_mode:        db 0x13
 is_graphics_mode:  db 1
 current_page:      db 0
 total_matched_files: db 0
-click_timer:         db 6
+click_timer:         db 12
+star_speed_step:     db 8
+osd_timer:           db 0
+
+draw_osd_speed:
+    pusha
+    
+    ; Set cursor at row 21, column 24
+    mov  dh, 21
+    mov  dl, 26
+    call set_cursor
+    
+    push ds
+    push es
+    push cs
+    pop  ds
+    push cs
+    pop  es
+    
+    ; Override text color to match the separator color
+    mov  bl, [is_graphics_mode]
+    test bl, bl
+    jz   .draw_sep_normal
+    mov  al, [color_mode]
+    cmp  al, 2              ; Color Mode?
+    jne  .draw_sep_normal
+    mov  bl, [video_mode]
+    cmp  bl, 0x13           ; VGA?
+    je   .use_vga_orange
+    mov  byte [text_color], 6  ; Brown/Orange separator for EGA/CGA
+    jmp  .draw_sep_normal
+.use_vga_orange:
+    mov  byte [text_color], 42 ; Vibrant Orange
+.draw_sep_normal:
+    mov  si, osd_label_msg
+    call puts_bios
+    
+    ; Print speed digits (star_speed_step / 2)
+    mov  al, [star_speed_step]
+    shr  al, 1                     ; AL = speed (1..12)
+    cmp  al, 10
+    jae  .ten_plus
+    
+    mov  ah, al
+    mov  al, '0'
+    call putc_bios
+    mov  al, ah
+    add  al, '0'
+    call putc_bios
+    jmp  .done
+    
+.ten_plus:
+    mov  ah, al
+    sub  ah, 10
+    mov  al, '1'
+    call putc_bios
+    mov  al, ah
+    add  al, '0'
+    call putc_bios
+    
+.done:
+    ; Restore text color to white
+    mov  bl, [is_graphics_mode]
+    test bl, bl
+    jz   .restore_done
+    mov  al, [color_mode]
+    cmp  al, 2
+    jne  .restore_done
+    mov  byte [text_color], 15
+.restore_done:
+    pop  es
+    pop  ds
+    popa
+    ret
+
+restore_separator_dashes:
+    pusha
+    
+    ; Set cursor at row 21, column 24
+    mov  dh, 21
+    mov  dl, 26
+    call set_cursor
+    
+    push ds
+    push es
+    push cs
+    pop  ds
+    push cs
+    pop  es
+    
+    ; Override text color to match the separator color
+    mov  bl, [is_graphics_mode]
+    test bl, bl
+    jz   .draw_sep_normal
+    mov  al, [color_mode]
+    cmp  al, 2              ; Color Mode?
+    jne  .draw_sep_normal
+    mov  bl, [video_mode]
+    cmp  bl, 0x13           ; VGA?
+    je   .use_vga_orange
+    mov  byte [text_color], 6  ; Brown/Orange separator for EGA/CGA
+    jmp  .draw_sep_normal
+.use_vga_orange:
+    mov  byte [text_color], 42 ; Vibrant Orange
+.draw_sep_normal:
+    mov  si, sep_dashes_14
+    call puts_bios
+    
+    ; Restore text color to white
+    mov  bl, [is_graphics_mode]
+    test bl, bl
+    jz   .restore_done
+    mov  al, [color_mode]
+    cmp  al, 2
+    jne  .restore_done
+    mov  byte [text_color], 15
+.restore_done:
+    pop  es
+    pop  ds
+    popa
+    ret
 
 bounce_buffer:     times 512 db 0

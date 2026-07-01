@@ -31,7 +31,7 @@
   #toolbar button:hover { background: #1a4a8a; }
   #toolbar #btn_pause { min-width: 88px; }
 
-  #screen_wrap { flex: 1; display: flex; align-items: center; justify-content: center; padding: 20px; }
+  #screen_wrap { flex: 1; display: flex; flex-direction: column; gap: 20px; align-items: center; justify-content: center; padding: 20px; }
   #screen_container { background: #000; display: inline-block; }
   #screen_container canvas { display: block; }
   #screen_container > div { color: #fff; }
@@ -50,6 +50,57 @@
     width: 100% !important;
     height: 100% !important;
     object-fit: contain;
+  }
+
+  #hotkeys_panel {
+    background: #16213e;
+    border: 2px solid #0f3460;
+    border-radius: 8px;
+    padding: 12px 20px;
+    width: 640px;
+    max-width: 100%;
+    color: #e0e0e0;
+    font-size: 12px;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+  }
+  #hotkeys_panel ul {
+    list-style: none;
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 8px 30px;
+  }
+  #hotkeys_panel li {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+  }
+  #hotkeys_panel kbd {
+    background: #0f3460;
+    color: #fff;
+    border: 1px solid #7ecae3;
+    border-radius: 4px;
+    padding: 2px 6px;
+    font-family: monospace;
+    font-weight: bold;
+    font-size: 11px;
+    box-shadow: 0 1px 0 #08203e;
+    text-shadow: 0 1px 0 rgba(0,0,0,0.5);
+    white-space: nowrap;
+  }
+  #hotkeys_panel span {
+    color: #aaa;
+    text-align: right;
+    font-size: 12px;
+  }
+  @media (max-width: 680px) {
+    #hotkeys_panel {
+      width: 100%;
+    }
+    #hotkeys_panel ul {
+      grid-template-columns: 1fr;
+      gap: 10px;
+    }
   }
 
   #overlay {
@@ -114,6 +165,17 @@
   <div id="screen_container">
     <div style="white-space: pre; font: 14px monospace; line-height: 14px"></div>
     <canvas></canvas>
+  </div>
+  <div id="hotkeys_panel">
+    <ul>
+      <li><kbd>A</kbd>–<kbd>O</kbd> <span>Load &amp; Run program</span></li>
+      <li><kbd>TAB</kbd> <span>Cycle Display Mode</span></li>
+      <li><kbd>SPACE</kbd> <span>Swap Drive (A: / B:)</span></li>
+      <li><kbd>ENTER</kbd> <span>Next Directory Page</span></li>
+      <li><kbd>+</kbd> / <kbd>=</kbd> <span>Increase Star Speed</span></li>
+      <li><kbd>-</kbd> / <kbd>_</kbd> <span>Decrease Star Speed</span></li>
+      <li><kbd>ESC</kbd> <span>Exit to ROM BASIC</span></li>
+    </ul>
   </div>
 </div>
 
